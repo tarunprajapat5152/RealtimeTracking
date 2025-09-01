@@ -8,6 +8,7 @@ const socket = require('socket.io');
 const server = http.createServer(app);
 const io = socket(server);
 
+// WebSocket Connection
 io.on('connection', socket => {
   console.log('connected');
   socket.on('send-location', data => {
@@ -19,8 +20,10 @@ io.on('connection', socket => {
   });
 });
 
+// Middleware
 app.use(express.static(path.join(__dirname)));
 
+// Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });

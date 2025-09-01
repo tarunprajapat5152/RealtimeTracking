@@ -5,6 +5,7 @@ import {
   Alert,
   Text,
   ToastAndroid,
+  TouchableOpacity,
 } from 'react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import MapView, { Marker } from 'react-native-maps';
@@ -15,6 +16,8 @@ import MapViewDirections from 'react-native-maps-directions';
 import CustomButton from '../components/CustomButton';
 import { handleCameraPicker } from '../utils/imagePicker';
 import OtpModal from '../components/OtpModal';
+import axios from 'axios';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 // const socket = io('http://13.202.12.138:3000', {
 //   transports: ['websocket'],
@@ -78,6 +81,17 @@ const MapViewScreen = ({ navigation }) => {
     }
   };
 
+  // Generate OrderId
+  const generatedOrderId = () => {
+    let orderId = 'ORD';
+    const id = Math.floor(1000000 + Math.random() * 9000000).toString();
+    orderId += id;
+    setOrderDetails(prev => ({
+      ...prev,
+      orderId: orderId,
+    }));
+  };
+
   // Current Time Interval
   useEffect(() => {
     const interval = setInterval(() => {
@@ -99,8 +113,10 @@ const MapViewScreen = ({ navigation }) => {
 
     socketRef.current.on('receive-location', data => {
       console.log('rec', data);
-      setOrderDetails(prev => ({ ...prev, orderId: data.id }));
+      // setOrderDetails(prev => ({ ...prev, orderId: data.id }));
     });
+
+    generatedOrderId();
 
     handleCurrentLocation();
 
@@ -116,21 +132,43 @@ const MapViewScreen = ({ navigation }) => {
     }
 
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    setGenratedOtp(otp)
+    setGenratedOtp(otp);
     ToastAndroid.show(`Your OTP is ${otp}`, ToastAndroid.LONG);
     setShowModal(true);
   };
 
-  const verifyOtp = (enteredOtp) => {
-    console.log(enteredOtp, generatedOtp)
-    if(enteredOtp === generatedOtp){
+  const verifyOtp = enteredOtp => {
+    console.log(enteredOtp, generatedOtp);
+    if (enteredOtp === generatedOtp) {
       handleDelyedCondition();
     }
-  }
+  };
+
+  // Store data in MongoDB
+  const orderInfo = async imagePath => {
+    console.log('orderInfo');
+    try {
+      const res = await axios.post('http://192.168.137.1:3000/orderDetails', {
+        orderId: orderDetails.orderId,
+        profile: imagePath,
+        currentLocation: '27.262072',
+        orderTime: orderDetails.orderTime,
+        estimateTime: orderDetails.estimateTime,
+        distance: orderDetails.showDistance,
+        currentTime: orderDetails.currentTime,
+        currentDistance: orderDetails.distance,
+        currentEstimateTime: orderDetails.duration,
+      });
+      console.log('res', res);
+    } catch (error) {
+      console.log('API Error', error.message);
+      console.log('API Status', error.response.status);
+      console.log('API data', error.response.data);
+    }
+  };
 
   // Handle Delyed Condition
   const handleDelyedCondition = () => {
-
     // Camera Picker
     handleCameraPicker(imagePath => {
       setImage(imagePath);
@@ -156,6 +194,8 @@ const MapViewScreen = ({ navigation }) => {
       const diffMs = userTime - estimateTimeNum;
       const diffMin = Math.abs(Math.floor(diffMs / 60000));
 
+      orderInfo(imagePath);
+
       navigation.navigate('OrderInformation', {
         ...orderDetails,
         image: imagePath,
@@ -169,8 +209,11 @@ const MapViewScreen = ({ navigation }) => {
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ backgroundColor: '#ECECEC', elevation: 5 }}>
-        <Text style={styles.headerStyle}>Home</Text>
+      <View style={styles.header}>
+        <Text style={styles.text}>Home</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('History')}>
+          <Icon name="history" size={24} />
+        </TouchableOpacity>
       </View>
 
       {currentLocation && destination && (
@@ -265,7 +308,13 @@ const MapViewScreen = ({ navigation }) => {
       )}
       <Button title="Reached" onPress={generateOtp} />
       {showModal && (
-        <OtpModal generateOtp={generateOtp} generatedOtp={generatedOtp} setGenratedOtp={setGenratedOtp} verifyOtp={verifyOtp} setShowModal={setShowModal} />
+        <OtpModal
+          generateOtp={generateOtp}
+          generatedOtp={generatedOtp}
+          setGenratedOtp={setGenratedOtp}
+          verifyOtp={verifyOtp}
+          setShowModal={setShowModal}
+        />
       )}
     </View>
   );
@@ -277,8 +326,15 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  headerStyle: {
-    paddingLeft: 25,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    backgroundColor: '#ECECEC',
+    elevation: 5,
+  },
+  text: {
     fontSize: 18,
     padding: 10,
     fontWeight: '600',

@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import React, { use } from 'react';
+import React, { use, useEffect } from 'react';
 import BackArrowOutlinedSvg from '../assets/svg/BackArrowOutlineSvg';
 import CustomButton from '../components/CustomButton';
+import axios from 'axios';
 
 const OrderInformation = ({ navigation, route }) => {
   console.log(route.params);
@@ -24,6 +25,24 @@ const OrderInformation = ({ navigation, route }) => {
   // const onPress = () => {
   //   navigatio
   // }
+
+  const getCurrentAddress = async (lat, log) => {
+    console.log("call")
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${log}&key=AIzaSyDJ0vdzfj6Uwr2WECgEsbhn-rAGBoJpm_Q`;
+    const res = await axios.get(url);
+    console.log(res);
+  };
+
+  useEffect(() => {
+    getCurrentAddress(currentLocation.latitude, currentLocation.longitude);
+  }, []);
+
+  const ListComponent = ({ title, value, unit }) => (
+    <View style={styles.details}>
+      <Text style={styles.title}>{title}: </Text>
+      <Text>{`${value}${unit || ''}`}</Text>
+    </View>
+  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -79,40 +98,30 @@ const OrderInformation = ({ navigation, route }) => {
           }}
         >
           <View>
-            <View style={styles.details}>
-              <Text style={styles.title}>Order Time: </Text>
-              <Text>{orderTime}</Text>
-            </View>
-
-            <View style={styles.details}>
-              <Text style={styles.title}>Estimate Time: </Text>
-              <Text>{estimateTime}</Text>
-            </View>
-
-            <View style={styles.details}>
-              <Text style={styles.title}>Distance: </Text>
-              <Text>{showDistance} Km</Text>
-            </View>
+            <ListComponent title={'Order Time'} value={orderTime} />
+            <ListComponent title={'Estimate Time'} value={estimateTime} />
+            <ListComponent
+              title={'Distance'}
+              value={showDistance}
+              unit={'Km'}
+            />
           </View>
 
           <View>
-            <View style={styles.details}>
-              <Text style={styles.title}>Current Time: </Text>
-              <Text>{currentTime}</Text>
-            </View>
-
-            <View style={styles.details}>
-              <Text style={styles.title}>Current Distance: </Text>
-              <Text>{distance} Km</Text>
-            </View>
-
-            <View style={styles.details}>
-              <Text style={styles.title}>Estimate Time: </Text>
-              <Text>{duration} min</Text>
-            </View>
+            <ListComponent title={'Cureent Time'} value={currentTime} />
+            <ListComponent
+              title={'Current Distance'}
+              value={distance}
+              unit={'Km'}
+            />
+            <ListComponent
+              title={'Estimate Time'}
+              value={duration}
+              unit={'min'}
+            />
           </View>
         </View>
-        <View style={{marginTop: 10}}>
+        <View style={{ marginTop: 10 }}>
           <CustomButton
             color="#000"
             onPress={() => navigation.navigate('History')}
