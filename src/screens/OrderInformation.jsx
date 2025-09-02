@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import React, { use, useEffect } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import BackArrowOutlinedSvg from '../assets/svg/BackArrowOutlineSvg';
 import CustomButton from '../components/CustomButton';
 import axios from 'axios';
@@ -16,26 +16,14 @@ const OrderInformation = ({ navigation, route }) => {
     distance,
     duration,
     currentLocation,
+    sourceLocation,
+    initialAdd,
+    currentAdd,
     diffMin,
   } = route.params;
 
   const estimateTimeNum = new Date(route.params.estimateTimeNum);
   const userTime = new Date(route.params.userTime);
-
-  // const onPress = () => {
-  //   navigatio
-  // }
-
-  const getCurrentAddress = async (lat, log) => {
-    console.log("call")
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${log}&key=AIzaSyDJ0vdzfj6Uwr2WECgEsbhn-rAGBoJpm_Q`;
-    const res = await axios.get(url);
-    console.log(res);
-  };
-
-  useEffect(() => {
-    getCurrentAddress(currentLocation.latitude, currentLocation.longitude);
-  }, []);
 
   const ListComponent = ({ title, value, unit }) => (
     <View style={styles.details}>
@@ -80,6 +68,7 @@ const OrderInformation = ({ navigation, route }) => {
         </View>
 
         <View style={{ marginTop: 10 }}>
+          <Text style={styles.title}>Current Location</Text>
           <View style={styles.details}>
             <Text style={styles.title}>Latitue: </Text>
             <Text>{currentLocation.latitude.toFixed(8)}</Text>
@@ -87,6 +76,18 @@ const OrderInformation = ({ navigation, route }) => {
           <View style={styles.details}>
             <Text style={styles.title}>Longitude: </Text>
             <Text>{currentLocation.longitude.toFixed(8)}</Text>
+          </View>
+        </View>
+
+        <View style={{ marginTop: 10 }}>
+          <Text style={styles.title}>Source Location</Text>
+          <View style={styles.details}>
+            <Text style={styles.title}>Latitude: </Text>
+            <Text>{sourceLocation.latitude.toFixed(8)}</Text>
+          </View>
+          <View style={styles.details}>
+            <Text style={styles.title}>Longitude: </Text>
+            <Text>{sourceLocation.longitude.toFixed(8)}</Text>
           </View>
         </View>
 

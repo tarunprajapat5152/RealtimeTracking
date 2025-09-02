@@ -25,6 +25,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const MapViewScreen = ({ navigation }) => {
   const [currentLocation, setCurrentLocation] = useState(null);
+  const [sourceLocation, setSourceLocation] = useState(null);
   const [destination, setDestination] = useState(null);
   const [isDestination, setIsDestination] = useState(false);
   const [image, setImage] = useState('');
@@ -72,6 +73,9 @@ const MapViewScreen = ({ navigation }) => {
 
     try {
       getCurrentLocation(newCoordinates => {
+        if (!sourceLocation) {
+          setSourceLocation(newCoordinates);
+        }
         setCurrentLocation(newCoordinates);
         console.log(newCoordinates);
         socketRef.current.emit('send-location', newCoordinates);
@@ -167,10 +171,29 @@ const MapViewScreen = ({ navigation }) => {
     }
   };
 
+  // Get address to lat lng
+  const getCurrentAddress = async (lat, log) => {
+    try {
+      console.log('call');
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${log}&key=AIzaSyDJ0vdzfj6Uwr2WECgEsbhn-rAGBoJpm_Q`;
+      const res = await axios.get(url);
+      console.log(res);
+
+      if (res.status !== 200 || res.data.results.length === 0) {
+        console.log('No address found');
+        return;
+      }
+
+      return res.data.results[0].formatted_address;
+    } catch (error) {
+      console.log('Address fetch error:', error.message);
+    }
+  };
+
   // Handle Delyed Condition
-  const handleDelyedCondition = () => {
+  const handleDelyedCondition = async () => {
     // Camera Picker
-    handleCameraPicker(imagePath => {
+    handleCameraPicker(async imagePath => {
       setImage(imagePath);
 
       // Convert estimateTime (string) to Date object
@@ -194,12 +217,23 @@ const MapViewScreen = ({ navigation }) => {
       const diffMs = userTime - estimateTimeNum;
       const diffMin = Math.abs(Math.floor(diffMs / 60000));
 
+      const initialAdd = await getCurrentAddress(
+        sourceLocation.latitude,
+        sourceLocation.longitude,
+      );
+      const currentAdd = await getCurrentAddress(
+        currentLocation.latitude,
+        currentLocation.longitude,
+      );
       orderInfo(imagePath);
 
       navigation.navigate('OrderInformation', {
         ...orderDetails,
         image: imagePath,
         currentLocation,
+        sourceLocation,
+        initialAdd,
+        currentAdd,
         estimateTimeNum: estimateTimeNum.toISOString(),
         userTime: userTime.toISOString(),
         diffMin,
