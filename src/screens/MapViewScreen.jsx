@@ -149,19 +149,22 @@ const MapViewScreen = ({ navigation }) => {
   };
 
   // Store data in MongoDB
-  const orderInfo = async imagePath => {
-    console.log('orderInfo');
+  const orderInfo = async (imagePath, initialAdd, currentAdd) => {
+    console.log('orderInfo', currentLocation);
     try {
       const res = await axios.post('http://192.168.137.1:3000/orderDetails', {
         orderId: orderDetails.orderId,
         profile: imagePath,
-        currentLocation: '27.262072',
         orderTime: orderDetails.orderTime,
         estimateTime: orderDetails.estimateTime,
         distance: orderDetails.showDistance,
         currentTime: orderDetails.currentTime,
         currentDistance: orderDetails.distance,
         currentEstimateTime: orderDetails.duration,
+        currentLocation: {lat: currentLocation.latitude, lng: currentLocation.longitude},
+        sourceLocation: {lat: sourceLocation.latitude, lng: sourceLocation.longitude},
+        initialAddress: initialAdd,
+        currentAddress: currentAdd
       });
       console.log('res', res);
     } catch (error) {
@@ -225,7 +228,7 @@ const MapViewScreen = ({ navigation }) => {
         currentLocation.latitude,
         currentLocation.longitude,
       );
-      orderInfo(imagePath);
+      orderInfo(imagePath, initialAdd, currentAdd);
 
       navigation.navigate('OrderInformation', {
         ...orderDetails,

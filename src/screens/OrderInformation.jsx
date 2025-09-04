@@ -7,7 +7,7 @@ import axios from 'axios';
 const OrderInformation = ({ navigation, route }) => {
   console.log(route.params);
   const {
-    image,
+    image = '',
     orderId,
     orderTime,
     estimateTime,
@@ -89,6 +89,11 @@ const OrderInformation = ({ navigation, route }) => {
             <Text style={styles.title}>Longitude: </Text>
             <Text>{sourceLocation.longitude.toFixed(8)}</Text>
           </View>
+        </View>
+
+        <View>
+          <ListComponent title={'Initial Address'} value={initialAdd} />
+          <ListComponent title={'Current Address'} value={currentAdd} />
         </View>
 
         <View

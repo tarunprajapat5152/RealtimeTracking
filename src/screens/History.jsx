@@ -78,13 +78,16 @@ const History = ({ navigation }) => {
             {orderId === item.orderId &&
               orderInfo?.map((item, key) => (
                 <View key={key} style={styles.orderDetails}>
-                  <OrderHistory title={'CurrentLocation'} value={item.currentLocation} />
                   <OrderHistory title={'OrderTime'} value={item.orderTime} />
                   <OrderHistory title={'EstimateTime'} value={item.estimateTime} />
                   <OrderHistory title={'Distance'} value={item.distance} unit={'Km'} />
                   <OrderHistory title={'CurrentTime'} value={item.currentTime} />
                   <OrderHistory title={'CurrentDistance'} value={item.currentDistance} unit={'Km'} />
                   <OrderHistory title={'CurrentEstimateTime'} value={item.currentEstimateTime} unit={'min'} />
+                  <OrderHistory title={'CurrentLocation'} value={`${item.currentLocation.lat}, ${item.currentLocation.lng}`} />
+                  <OrderHistory title={'SourceLocation'} value={`${item.sourceLocation.lat}, ${item.sourceLocation.lng}`} />
+                  <OrderHistory title={'InitialAddress:'} value={item.initialAddress} />
+                  <OrderHistory title={'CurrentAddress:'} value={item.currentAddress} />
                 </View>
               ))}
           </View>

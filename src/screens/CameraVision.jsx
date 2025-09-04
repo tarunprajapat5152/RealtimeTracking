@@ -1,253 +1,262 @@
-import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
+  TouchableOpacity,
   StyleSheet,
-  Dimensions,
+  Image,
   Alert,
-  StatusBar,
 } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import BackArrowOutlinedSvg from '../assets/svg/BackArrowOutlineSvg';
+import faceDetection from '../assets/img/facedetection.png';
+import CustomButton from '../components/CustomButton';
 import {
   Camera,
   useCameraDevice,
+  useCameraPermission,
   useFrameProcessor,
 } from 'react-native-vision-camera';
 import { useFaceDetector } from 'react-native-vision-camera-face-detector';
 import { Worklets } from 'react-native-worklets-core';
 
-const { width } = Dimensions.get('window');
+const CameraVision = ({ navigation }) => {
+  const [imagePath, setImagePath] = useState('');
+  const [imgPlaceholder, setImgPlaceholder] = useState(true);
+  const [hasCaptured, setHasCaptured] = useState(false);
+  const [isDetect, setIsDetect] = useState(false);
+  const [faceTimer, setFaceTimer] = useState(0);
 
-export default function FaceDetectionApp() {
-  const [hasPermission, setHasPermission] = useState(false);
-  const [faces, setFaces] = useState([]);
-  const [isActive, setIsActive] = useState(true);
-  const device = useCameraDevice('front');
-
+  const camera = useRef(null);
+  const timerRef = useRef(null);
   const faceDetectionOptions = useRef({
     performanceMode: 'fast',
     landmarkMode: 'all',
     contourMode: 'all',
     classificationMode: 'all',
-    minFaceSize: 0.1,
+    minFaceSize: 10,
     tracking: true,
   }).current;
 
-  const { detectFaces, stopListeners } = useFaceDetector(faceDetectionOptions);
+  const device = useCameraDevice('front');
+  const { detectFaces } = useFaceDetector(faceDetectionOptions);
+  const { hasPermission, requestPermission } = useCameraPermission();
 
   useEffect(() => {
-    const requestPermissions = async () => {
-      const cameraStatus = await Camera.requestCameraPermission();
-      if (cameraStatus === 'authorized' || cameraStatus === 'granted') {
-        setHasPermission(true);
-      } else {
+    const requestPermissionCamera = async () => {
+      if (!hasPermission)
         Alert.alert(
           'Camera Permission Required',
           'Please grant camera permission to use face detection.',
         );
-      }
+
+      const res = await requestPermission();
+      console.log(res);
     };
 
-    requestPermissions();
-    return () => stopListeners();
-  }, [stopListeners]);
+    requestPermissionCamera();
+  }, []);
 
-  const handleFacesDetected = detectedFaces => {
-    setFaces(detectedFaces);
+  const takePicture = async () => {
+    const res = await camera.current.takePhoto();
+    setImagePath(res.path);
+    setHasCaptured(true);
+    console.log(res);
   };
 
-  const handleFacesDetectedJS = Worklets.createRunOnJS(handleFacesDetected);
-
-  const frameProcessorr = useFrameProcessor(
-    frame => {
-      'worklet';
-      console.log("hey")
-      try {
-        const detectedFaces = detectFaces(frame);
-        console.log(detectFaces);
-        handleFacesDetectedJS(detectedFaces);
-      } catch (error) {
-        console.log('Frame processing error:', error?.message);
+  const handleFaceDetected = detectedFace => {
+    const faceData = detectedFace[0];
+    if (!faceData) {
+      setIsDetect(false);
+      setFaceTimer(0);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
-    },
-    [detectFaces],
-  );
+      return;
+    }
 
-  const renderFaceOverlays = () => {
-    if (!faces || faces.length === 0) return null;
+    const { height, width } = faceData.bounds;
 
-    return faces.map((face, index) => {
-      if (!face || !face.bounds) return null;
+    // const landmarks = [
+    //   faceData?.landmarks?.LEFT_CHEEK,
+    //   faceData?.landmarks?.LEFT_EAR,
+    //   faceData?.landmarks?.LEFT_EYE,
+    //   faceData?.landmarks?.MOUTH_BOTTOM,
+    //   faceData.landmarks?.MOUTH_LEFT,
+    //   faceData?.landmarks?.MOUTH_RIGHT,
+    //   faceData?.landmarks?.NOSE_BASE,
+    //   faceData?.landmarks?.RIGHT_CHEEK,
+    //   faceData?.landmarks?.RIGHT_EAR,
+    //   faceData?.landmarks?.RIGHT_EYE,
+    // ];
 
-      const { bounds } = face;
-      const faceStyle = {
-        position: 'absolute',
-        left: bounds.x * 0.8,
-        top: bounds.y * 0.8,
-        width: bounds.width * 0.8,
-        height: bounds.height * 0.8,
-        borderWidth: 2,
-        borderColor: '#00FF00',
-        borderRadius: 10,
-        backgroundColor: 'transparent',
-      };
+    // const allVisible = landmarks.every(point => point !== undefined);
 
-      return (
-        <View key={`face-${index}`} style={faceStyle}>
-          <View style={styles.faceLabel}>
-            <Text style={styles.faceLabelText}>Face {index + 1}</Text>
-            {face.smilingProbability > 0.5 && (
-              <Text style={styles.faceLabelText}>😊</Text>
-            )}
-          </View>
-        </View>
-      );
-    });
+    const leftEye = faceData?.landmarks?.LEFT_EYE;
+    const rightEye = faceData?.landmarks?.RIGHT_EYE;
+    const nose = faceData?.landmarks?.NOSE_BASE;
+    const mouthLeft = faceData?.landmarks?.MOUTH_LEFT;
+    const mouthRight = faceData?.landmarks?.MOUTH_RIGHT;
+    const mouthFullVisible = mouthRight.x > 200;
+
+    const allVisible = leftEye && rightEye && nose && mouthLeft && mouthRight && mouthFullVisible;
+
+    const isValid =
+      height > 200 &&
+      width > 200 &&
+      allVisible &&
+      Math.abs(faceData?.yawAngle) < 15 &&
+      Math.abs(faceData?.pitchAngle) < 10 &&
+      Math.abs(faceData?.rollAngle) < 10;
+
+    setIsDetect(isValid);
+
+    if (isValid && !hasCaptured) {
+      if (!timerRef.current) {
+        timerRef.current = setInterval(() => {
+          setFaceTimer(prev => {
+            if (prev === 2) {
+              clearInterval(timerRef.current);
+              timerRef.current = null;
+              takePicture();
+              return 0;
+            } else {
+              return prev + 1;
+            }
+          });
+        }, 1000);
+      }
+    } else {
+      if (!isValid) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        setFaceTimer(0);
+      }
+    }
   };
 
-  if (!hasPermission) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.permissionText}>
-          Camera permission is required for face detection
-        </Text>
-      </View>
-    );
-  }
+  const handleFaceDetectedJS = Worklets.createRunOnJS(handleFaceDetected);
 
-  if (!device) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.permissionText}>Front camera not available</Text>
-      </View>
-    );
-  }
+  const frameProcessor = useFrameProcessor(frame => {
+    'worklet';
+    try {
+      const face = detectFaces(frame);
+      console.log('face', face);
+      handleFaceDetectedJS(face);
+    } catch (error) {
+      console.log('Frame processing error:', error?.message);
+    }
+  });
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
-      <Text style={styles.title}>Face Detection</Text>
-
-      <View style={styles.cameraContainer}>
-        <Camera
-          style={styles.camera}
-          device={device}
-          isActive={isActive && hasPermission}
-          frameProcessor={frameProcessorr}
-          photo={true}
-        />
-        {renderFaceOverlays()}
-        <View style={styles.faceGuide} />
+    <View style={{ flex: 1 }}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <BackArrowOutlinedSvg />
+        </TouchableOpacity>
+        <Text style={styles.title}>CameraVision</Text>
       </View>
 
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoText}>Faces Detected: {faces.length}</Text>
-        {faces.length > 0 && (
-          <View style={styles.faceInfo}>
-            {faces.map((face, index) => (
-              <View key={index} style={styles.faceDetails}>
-                <Text style={styles.faceDetailText}>Face {index + 1}:</Text>
-                <Text style={styles.faceDetailText}>
-                  Smile: {(face.smilingProbability * 100).toFixed(0)}%
-                </Text>
-                <Text style={styles.faceDetailText}>
-                  Left Eye:{' '}
-                  {face.leftEyeOpenProbability > 0.5 ? 'Open' : 'Closed'}
-                </Text>
-                <Text style={styles.faceDetailText}>
-                  Right Eye:{' '}
-                  {face.rightEyeOpenProbability > 0.5 ? 'Open' : 'Closed'}
-                </Text>
-              </View>
-            ))}
+      <View style={{ flex: 1, alignItems: 'center', marginTop: 100 }}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[
+            styles.cameraBox,
+            { borderColor: isDetect ? 'green' : 'red', borderWidth: 2 },
+          ]}
+          onPress={() => setImgPlaceholder(false)}
+        >
+          <View style={styles.faceBox}>
+            {imgPlaceholder ? (
+              <Image
+                style={{ height: '100%', width: '100%' }}
+                source={faceDetection}
+              />
+            ) : (
+              !imagePath && (
+                <Camera
+                  ref={camera}
+                  style={{ height: '100%', width: '100%' }}
+                  device={device}
+                  isActive={true}
+                  frameProcessor={frameProcessor}
+                  photo={true}
+                />
+              )
+            )}
+
+            {imagePath && (
+              <Image
+                style={{ height: '100%', width: '100%' }}
+                source={{ uri: `file://${imagePath}` }}
+              />
+            )}
           </View>
-        )}
+        </TouchableOpacity>
+        <View style={{ marginTop: 20 }}>
+          <CustomButton
+            color="#000"
+            onPress={() => {
+              setImagePath(''),
+                setIsDetect(false),
+                setHasCaptured(false),
+                setFaceTimer(0);
+            }}
+            style="backgroundColor: '#268F8C'"
+            padding="40"
+            title="ReTake"
+          />
+        </View>
+        <View style={{ marginTop: 10 }}>
+          <CustomButton
+            color="#000"
+            onPress={() => console.log('hey')}
+            style="backgroundColor: '#268F8C'"
+            padding="50"
+            title="Done"
+          />
+        </View>
       </View>
     </View>
   );
-}
+};
+
+export default CameraVision;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  cameraContainer: {
-    position: 'relative',
-    width: width * 0.8,
-    height: width * 0.8,
-    marginBottom: 30,
-  },
-  camera: {
-    width: '100%',
-    height: '100%',
-    borderRadius: width * 0.4,
-    overflow: 'hidden',
-  },
-  faceGuide: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    borderRadius: width * 0.4,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    borderStyle: 'dashed',
-  },
-  faceLabel: {
-    position: 'absolute',
-    top: -25,
-    left: 0,
-    backgroundColor: 'rgba(0, 255, 0, 0.8)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 15,
+    backgroundColor: '#ECECEC',
+    elevation: 5,
   },
-  faceLabelText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginRight: 4,
-  },
-  infoContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  infoText: {
+  title: {
+    fontWeight: '700',
     fontSize: 18,
-    color: '#fff',
-    fontWeight: 'bold',
-    marginBottom: 15,
+    marginLeft: 15,
   },
-  faceInfo: {
-    width: '100%',
+  cameraBox: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 270,
+    width: 270,
+    borderRadius: 150,
+    borderColor: 'black',
+    borderWidth: 1,
   },
-  faceDetails: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 10,
-    marginBottom: 8,
-    borderRadius: 8,
+  faceBox: {
+    height: 260,
+    width: 260,
+    borderRadius: 150,
+    borderColor: '#fff',
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  faceDetailText: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  permissionText: {
-    fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
-    paddingHorizontal: 20,
+  box: {
+    position: 'absolute',
+    borderColor: 'green',
+    borderWidth: 2,
   },
 });
