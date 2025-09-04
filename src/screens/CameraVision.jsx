@@ -77,27 +77,12 @@ const CameraVision = ({ navigation }) => {
 
     const { height, width } = faceData.bounds;
 
-    // const landmarks = [
-    //   faceData?.landmarks?.LEFT_CHEEK,
-    //   faceData?.landmarks?.LEFT_EAR,
-    //   faceData?.landmarks?.LEFT_EYE,
-    //   faceData?.landmarks?.MOUTH_BOTTOM,
-    //   faceData.landmarks?.MOUTH_LEFT,
-    //   faceData?.landmarks?.MOUTH_RIGHT,
-    //   faceData?.landmarks?.NOSE_BASE,
-    //   faceData?.landmarks?.RIGHT_CHEEK,
-    //   faceData?.landmarks?.RIGHT_EAR,
-    //   faceData?.landmarks?.RIGHT_EYE,
-    // ];
-
-    // const allVisible = landmarks.every(point => point !== undefined);
-
     const leftEye = faceData?.landmarks?.LEFT_EYE;
     const rightEye = faceData?.landmarks?.RIGHT_EYE;
     const nose = faceData?.landmarks?.NOSE_BASE;
     const mouthLeft = faceData?.landmarks?.MOUTH_LEFT;
     const mouthRight = faceData?.landmarks?.MOUTH_RIGHT;
-    const mouthFullVisible = mouthRight.x > 200;
+    const mouthFullVisible = mouthLeft.x > 200 && mouthRight.x < 340;
 
     const allVisible = leftEye && rightEye && nose && mouthLeft && mouthRight && mouthFullVisible;
 
